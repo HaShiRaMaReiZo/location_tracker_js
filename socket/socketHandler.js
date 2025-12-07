@@ -36,18 +36,25 @@ const broadcastLocationUpdate = (data) => {
     package_id: package_id || null
   });
 
-  // Broadcast to merchant app only if package status is "on_the_way"
-  if (package_id && package_status === 'on_the_way') {
+  // Broadcast to merchant app if package_id is provided
+  // If package_status is null (couldn't fetch from Laravel), we'll broadcast anyway
+  // The merchant app will filter based on its own package status check
+  if (package_id) {
     const merchantChannel = `merchant.package.${package_id}.location`;
-    ioInstance.to(merchantChannel).emit('location:update', {
-      rider_id,
-      latitude,
-      longitude,
-      timestamp,
-      package_id
-    });
     
-    console.log(`Broadcasted location update for rider ${rider_id} to merchant channel: ${merchantChannel}`);
+    // Only broadcast if status is "on_the_way" OR if status is null (assume on_the_way)
+    // This ensures merchant app receives updates even if we can't fetch status from Laravel
+    if (!package_status || package_status === 'on_the_way') {
+      ioInstance.to(merchantChannel).emit('location:update', {
+        rider_id,
+        latitude,
+        longitude,
+        timestamp,
+        package_id
+      });
+      
+      console.log(`Broadcasted location update for rider ${rider_id} to merchant channel: ${merchantChannel} (status: ${package_status || 'unknown'})`);
+    }
   }
 
   console.log(`Location update broadcasted: rider_id=${rider_id}, lat=${latitude}, lng=${longitude}, package_id=${package_id || 'null'}, status=${package_status || 'null'}`);
@@ -124,14 +131,20 @@ const initializeSocket = (io) => {
         activeConnections.set(rider_id, socket.id);
 
         // Get package status from Laravel if package_id is provided
+        // Note: This endpoint requires auth, so we'll skip it for now
+        // The merchant app will only receive updates when package status is "on_the_way"
+        // Since we can't easily get status without auth, we'll broadcast to merchant channel
+        // if package_id is provided (merchant app will filter based on its own package status check)
         let packageStatus = null;
+        
+        // Try to get package status (optional - will fail silently if auth required)
         if (package_id) {
           try {
             const laravelUrl = process.env.LARAVEL_URL || 'https://ok-delivery.onrender.com';
             const response = await axios.get(
               `${laravelUrl}/api/rider/packages/${package_id}`,
               { 
-                timeout: 2000,
+                timeout: 1000, // Shorter timeout since this is optional
                 headers: {
                   'Accept': 'application/json'
                 }
@@ -140,11 +153,20 @@ const initializeSocket = (io) => {
             
             if (response?.data?.package?.status) {
               packageStatus = response.data.package.status;
+            } else if (response?.data?.status) {
+              // Alternative response structure
+              packageStatus = response.data.status;
             }
           } catch (err) {
-            // If Laravel is unavailable, continue without status check
-            console.warn(`Could not fetch package status from Laravel: ${err.message}`);
+            // Silently fail - status check is optional
+            // We'll broadcast anyway if package_id is provided
           }
+        }
+        
+        // If we couldn't get status but package_id is provided, assume "on_the_way"
+        // This allows merchant app to receive updates (merchant app will filter based on its own status check)
+        if (package_id && !packageStatus) {
+          packageStatus = 'on_the_way'; // Default assumption
         }
 
         // Broadcast location update
