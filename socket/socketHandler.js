@@ -199,9 +199,18 @@ const initializeSocket = (io) => {
               'Content-Type': 'application/json'
             }
           }
-        ).catch((err) => {
-          // Silently fail - Laravel storage is optional for real-time tracking
-          // console.warn(`Could not store location in Laravel: ${err.message}`);
+        ).then((response) => {
+          if (response?.status === 200) {
+            console.log(`✅ Location saved to Laravel database: rider_id=${rider_id}, lat=${latitude}, lng=${longitude}`);
+          } else {
+            console.warn(`⚠️ Laravel returned non-200 status: ${response?.status} for rider_id=${rider_id}`);
+          }
+        }).catch((err) => {
+          // Log the error so we can see why database save is failing
+          console.error(`❌ Failed to store location in Laravel database: rider_id=${rider_id}, error=${err.message}`);
+          if (err.response) {
+            console.error(`   Response status: ${err.response.status}, data:`, err.response.data);
+          }
         });
 
         // Confirm receipt
