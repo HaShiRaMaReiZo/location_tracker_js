@@ -140,7 +140,7 @@ const initializeSocket = (io) => {
         // Try to get package status (optional - will fail silently if auth required)
         if (package_id) {
           try {
-            const laravelUrl = process.env.LARAVEL_URL || 'https://ok-delivery.onrender.com';
+            const laravelUrl = process.env.LARAVEL_URL || 'https://ok-delivery-service.onrender.com';
             const response = await axios.get(
               `${laravelUrl}/api/rider/packages/${package_id}`,
               { 
@@ -181,7 +181,7 @@ const initializeSocket = (io) => {
 
         // Forward to Laravel for database storage (optional, non-blocking)
         // Note: This is optional - real-time tracking works without Laravel storage
-        const laravelUrl = process.env.LARAVEL_URL || 'https://ok-delivery.onrender.com';
+        const laravelUrl = process.env.LARAVEL_URL || 'https://ok-delivery-service.onrender.com';
         axios.post(
           `${laravelUrl}/api/rider/location/store`,
           {

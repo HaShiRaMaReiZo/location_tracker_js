@@ -8,5 +8,5 @@ services:
       - key: NODE_ENV
         value: production
       - key: LARAVEL_URL
-        value: https://ok-delivery.onrender.com
+        value: https://ok-delivery-service.onrender.com
       # PORT is automatically set by Render, no need to specify

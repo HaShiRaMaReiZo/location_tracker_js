@@ -27,13 +27,18 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    message: 'Location tracker running - no database required'
+  });
 });
 
 // Routes
 app.use('/api/location', locationRoutes);
 
-// Initialize Socket.io (no database needed - we use Laravel's database)
+// Initialize Socket.io (no database needed - uses Laravel's database for storage)
+// Location tracking works purely via Socket.io broadcasting
 initializeSocket(io);
 
 // Start server
